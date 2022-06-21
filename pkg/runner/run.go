@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -21,8 +22,10 @@ import (
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"google.golang.org/grpc/metadata"
 
+	ics23 "github.com/confio/ics23/go"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
+	crypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -140,6 +143,7 @@ func RunGRPCQuery(ctx context.Context, client *lensclient.ChainClient, method st
 		return abcitypes.ResponseQuery{}, nil, err
 	}
 
+	prove = true
 	abciReq := abcitypes.RequestQuery{
 		Path:   method,
 		Data:   reqBz,
@@ -147,15 +151,25 @@ func RunGRPCQuery(ctx context.Context, client *lensclient.ChainClient, method st
 		Prove:  prove,
 	}
 
-	//fmt.Println("query", "query", abciReq)
-
 	abciRes, err := client.QueryABCI(ctx, abciReq)
-	//fmt.Println(abciRes)
+
 	if err != nil {
 		return abcitypes.ResponseQuery{}, nil, err
 	}
 
 	return abciRes, md, nil
+}
+
+func showProof(proofOps []crypto.ProofOp, height int64, queryId int) {
+	for i, op := range proofOps {
+		var p ics23.CommitmentProof
+		err := p.Unmarshal(op.Data)
+		if err != nil || p.Proof == nil {
+			fmt.Println("ERROR: could not unmarshal proof op into CommitmentProof")
+			return
+		}
+		fmt.Printf("QID %d - Proof height %d, # %d... %v\n", queryId, height, i, p.Proof)
+	}
 }
 
 func doRequest(query Query) {
@@ -164,32 +178,51 @@ func doRequest(query Query) {
 		fmt.Println("No chain")
 		return
 	}
-	fmt.Println(query.Type)
-	newCtx := lensclient.SetHeightOnContext(ctx, query.Height)
-	pathParts := strings.Split(query.Type, "/")
-	if pathParts[len(pathParts)-1] == "key" { // fetch proof if the query is 'key'
+
+	query.Type = "store/bank/key"
+	fmt.Println("Query Type:", query.Type)
+
+	var res abcitypes.ResponseQuery
+	var submitClient *lensclient.ChainClient
+
+	for _, i := range []int64{2, 3, 2} {
+		queryId := rand.Intn(1000)
+
+		queryHeight := int64(i)
+
+		newCtx := lensclient.SetHeightOnContext(ctx, queryHeight)
 		newCtx = lensclient.SetProveOnContext(newCtx, true)
-	}
-	inMd, ok := metadata.FromOutgoingContext(newCtx)
-	fmt.Println("ctx", "ctx", ctx, "md", inMd)
-	if !ok {
-		panic("failed on not ok")
+		inMd, ok := metadata.FromOutgoingContext(newCtx)
+
+		fmt.Println("ctx", newCtx, "md", inMd)
+		if !ok {
+			panic("failed on not ok")
+		}
+
+		res, _, err := RunGRPCQuery(newCtx, client, "/"+query.Type, query.Request, inMd)
+		if err != nil {
+			panic(err)
+		}
+
+		submitClient = clients.GetForChainId(query.SourceChainId)
+		fmt.Printf("QID %d - Result received: %v, %v \n", queryId, res.Key, res.Value)
+
+		if res.ProofOps != nil && res.ProofOps.Ops != nil && len(res.ProofOps.Ops) > 0 {
+			fmt.Printf("QID %d - Proof returned\n", queryId)
+			showProof(res.ProofOps.Ops, queryHeight, queryId)
+		} else {
+			fmt.Printf("QID %d - No proof returned\n", queryId)
+		}
 	}
 
-	res, _, err := RunGRPCQuery(ctx, client, "/"+query.Type, query.Request, inMd)
-	if err != nil {
-		panic(err)
-	}
+	pathParts := strings.Split(query.Type, "/")
+	from, _ := submitClient.GetKeyAddress()
 
 	// submit tx to queue
-	submitClient := clients.GetForChainId(query.SourceChainId)
-	from, _ := submitClient.GetKeyAddress()
-	fmt.Println("Result received", "result", res.Value, "proof", res.ProofOps)
-
 	if pathParts[len(pathParts)-1] == "key" {
 		// update client
-		fmt.Println("Fetching client update for height", "height", res.Height+1)
-		lightBlock, err := client.LightProvider.LightBlock(ctx, res.Height+1)
+		fmt.Println("Fetching client update for height", "height", res.Height)
+		lightBlock, err := client.LightProvider.LightBlock(ctx, res.Height)
 		if err != nil {
 			fmt.Println("Error: Could not fetch updated LC from chain: ", err) // requeue
 			return
@@ -244,7 +277,7 @@ func doRequest(query Query) {
 
 	}
 
-	msg := &qstypes.MsgSubmitQueryResponse{ChainId: query.ChainId, QueryId: query.QueryId, Result: res.Value, Height: res.Height, FromAddress: submitClient.MustEncodeAccAddr(from)}
+	msg := &qstypes.MsgSubmitQueryResponse{ChainId: query.ChainId, QueryId: query.QueryId, Result: res.Value, Height: res.Height, FromAddress: submitClient.MustEncodeAccAddr(from), res.ProofOps}
 	sendQueue[query.SourceChainId] <- msg
 }
 
