@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	ics23 "github.com/confio/ics23/go"
+	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	crypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
@@ -203,6 +204,9 @@ func doRequest(query Query) {
 		if err != nil {
 			panic(err)
 		}
+
+		var simRes txtypes.SimulateResponse
+		fmt.Println("Result received:", "result (unmarshalled)", simRes.Unmarshal(res.Value), "proof", res.ProofOps)
 
 		submitClient = clients.GetForChainId(query.SourceChainId)
 		fmt.Printf("QID %d - Result received: %v, %v \n", queryId, res.Key, res.Value)
