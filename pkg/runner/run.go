@@ -180,7 +180,8 @@ func doRequest(query Query) {
 		return
 	}
 
-	query.Type = "store/bank/key"
+	// query.Type = "store/bank/key"
+	query.Type = "store/cosmos.bank.v1beta1.Query/AllBalances/key"
 	fmt.Println("Query Type:", query.Type)
 
 	var res abcitypes.ResponseQuery
