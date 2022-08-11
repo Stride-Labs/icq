@@ -383,7 +383,6 @@ func unique(msgSlice []sdk.Msg) []sdk.Msg {
 		}
 		fmt.Printf("C")
 		msg2, ok2 := entry.(*qstypes.MsgSubmitQueryResponse)
-		fmt.Printf("D")
 		if ok2 {
 			if _, value := keys[msg2.QueryId]; !value {
 				keys[msg2.QueryId] = true
