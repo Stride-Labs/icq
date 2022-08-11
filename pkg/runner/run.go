@@ -367,7 +367,6 @@ func unique(msgSlice []sdk.Msg) []sdk.Msg {
 
 	list := []sdk.Msg{}
 	for _, entry := range msgSlice {
-		fmt.Printf("A")
 		msg, ok := entry.(*clienttypes.MsgUpdateClient)
 
 		if ok {
