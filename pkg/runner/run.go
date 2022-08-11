@@ -224,7 +224,6 @@ func doRequest(query Query) {
 		if err != nil {
 			fmt.Println("Error: Could not get valset from chain: ", err)
 			panic("Error: Could not get valset from chain: ")
-			return
 		}
 		fmt.Println("GOT PROTOVAL")
 
@@ -344,7 +343,7 @@ func flush(chainId string, toSend []sdk.Msg) {
 		}
 		// dedupe on queryId
 		msgs := unique(toSend)
-		fmt.Printf("Sending mesage: ", msgs[0].String())
+		fmt.Println("Sending mesage: ", msgs[0].String())
 		resp, err := client.SendMsgs(context.Background(), msgs)
 		if err != nil {
 			if resp != nil && resp.Code == 19 && resp.Codespace == "sdk" {

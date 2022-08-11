@@ -87,7 +87,7 @@ func initConfig(cmd *cobra.Command) error {
 		}
 
 		// Should output be a global configuration item?
-		for chain, _ := range cfg.Chains {
+		for chain := range cfg.Chains {
 			cfg.Chains[chain].OutputFormat = output
 		}
 	}
