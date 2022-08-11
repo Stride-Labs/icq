@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/Stride-Labs/interchain-queries/pkg/config"
+	"github.com/Stride-Labs/icq/pkg/config"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/spf13/cobra"

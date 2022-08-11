@@ -19,7 +19,6 @@ require (
 	github.com/99designs/keyring v1.1.6 // indirect
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
 	github.com/DataDog/zstd v1.4.8 // indirect
-	github.com/Stride-Labs/interchain-queries v0.0.0-20220608170312-af4854620c5b // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/avast/retry-go/v4 v4.0.4 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -115,4 +114,4 @@ require (
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
-replace github.com/strangelove-ventures/lens => github.com/Stride-Labs/lens v0.0.21
+replace github.com/strangelove-ventures/lens => github.com/Stride-Labs/lens v0.0.24

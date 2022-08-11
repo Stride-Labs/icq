@@ -11,17 +11,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Stride-Labs/interchain-queries/pkg/config"
+	"github.com/Stride-Labs/icq/pkg/config"
 	qstypes "github.com/Stride-Labs/stride/x/interchainquery/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
+	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	lensclient "github.com/strangelove-ventures/lens/client"
+	lensquery "github.com/strangelove-ventures/lens/client/query"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-	"google.golang.org/grpc/metadata"
-
-	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	tmtypes "github.com/tendermint/tendermint/types"
+	"google.golang.org/grpc/metadata"
 )
 
 type Clients []*lensclient.ChainClient

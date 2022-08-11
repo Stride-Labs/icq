@@ -102,11 +102,10 @@ func defaultConfig(keyHome string, debug bool) []byte {
 	return Config{
 		DefaultChain: "stride-testnet",
 		Chains: map[string]*client.ChainClientConfig{
-			// "cosmoshub":      client.GetCosmosHubConfig(keyHome, debug),
-			// "osmosis":        client.GetOsmosisConfig(keyHome, debug),
 			"stride-testnet": client.GetStrideTestnetConfig(keyHome, debug),
 			"gaia-testnet":   client.GetGaiaTestnetConfig(keyHome, debug),
-			// "stride": clien
+			"juno-local":     client.GetJunoLocalConfig(keyHome, debug),
+			"osmo-local":     client.GetOsmoLocalConfig(keyHome, debug),
 		},
 	}.MustYAML()
 }
