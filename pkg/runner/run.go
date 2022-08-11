@@ -11,22 +11,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Stride-Labs/interchain-queries/pkg/config"
+	"github.com/Stride-Labs/icq/pkg/config"
 	qstypes "github.com/Stride-Labs/stride/x/interchainquery/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
+	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	lensclient "github.com/strangelove-ventures/lens/client"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-	"google.golang.org/grpc/metadata"
-
-	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
-	tmclient "github.com/cosmos/ibc-go/v3/modules/light-clients/07-tendermint/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmtypes "github.com/tendermint/tendermint/types"
-
-	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
+	"google.golang.org/grpc/metadata"
 )
 
 type Clients []*lensclient.ChainClient
@@ -210,8 +207,6 @@ func doRequest(query Query) {
 	submitClient := clients.GetForChainId(query.SourceChainId)
 	from, _ := submitClient.GetKeyAddress()
 	fmt.Println("Result received:", "result", res.Value, "proof", res.ProofOps)
-	var simRes txtypes.SimulateResponse
-	fmt.Println("Result received:", "result (unmarshalled)", simRes.Unmarshal(res.Value), "proof", res.ProofOps)
 
 	if pathParts[len(pathParts)-1] == "key" {
 		// update client
@@ -219,50 +214,58 @@ func doRequest(query Query) {
 		lightBlock, err := retryLightblock(ctx, client, res.Height+1, 5)
 		if err != nil {
 			fmt.Println("Error: Could not fetch updated LC from chain - bailing: ", err) // requeue
-			return
+			panic("Error: Could not fetch updated LC from chain - bailing")
 		}
+		fmt.Println("GOT LIGHT BLOCK")
+
 		valSet := tmtypes.NewValidatorSet(lightBlock.ValidatorSet.Validators)
+		fmt.Println("tmtypes.NewValidatorSet(lightBlock.ValidatorSet.Validators); first val:  ", valSet.Validators[0].String()) // requeue
 		protoVal, err := valSet.ToProto()
 		if err != nil {
 			fmt.Println("Error: Could not get valset from chain: ", err)
+			panic("Error: Could not get valset from chain: ")
 			return
 		}
+		fmt.Println("GOT PROTOVAL")
 
 		submitQuerier := lensquery.Query{Client: submitClient, Options: lensquery.DefaultOptions()}
 		connection, err := submitQuerier.Ibc_Connection(query.ConnectionId)
 		if err != nil {
 			fmt.Println("Error: Could not get connection from chain: ", err)
-			return
+			panic("Error: Could not get connection from chain: ")
 		}
+		fmt.Println("submitQuerier.Ibc_Connection(query.ConnectionId)")
 
 		clientId := connection.Connection.ClientId
 		state, err := submitQuerier.Ibc_ClientState(clientId) // pass in from request
 		if err != nil {
 			fmt.Println("Error: Could not get state from chain: ", err)
-			return
+			panic("Error: Could not get state from chain: ")
 		}
+		fmt.Println("submitQuerier.Ibc_ClientState(clientId)")
+
 		unpackedState, err := clienttypes.UnpackClientState(state.ClientState)
 		if err != nil {
 			fmt.Println("Error: Could not unpack state from chain: ", err)
-			return
+			panic("Error: Could not unpack state from chain: ")
 		}
 
 		trustedHeight := unpackedState.GetLatestHeight()
 		clientHeight, ok := trustedHeight.(clienttypes.Height)
 		if !ok {
 			fmt.Println("Error: Could coerce trusted height")
-			return
+			panic("Error: Could coerce trusted height")
 		}
 
 		consensus, err := submitQuerier.Ibc_ConsensusState(clientId, clientHeight) // pass in from request
 		if err != nil {
 			fmt.Println("Error: Could not get consensus state from chain: ", err)
-			return
+			panic("Error: Could not get consensus state from chain: ")
 		}
 		unpackedConsensus, err := clienttypes.UnpackConsensusState(consensus.ConsensusState)
 		if err != nil {
 			fmt.Println("Error: Could not unpack consensus state from chain: ", err)
-			return
+			panic("Error: Could not unpack consensus state from chain: ")
 		}
 		tmConsensus := unpackedConsensus.(*tmclient.ConsensusState)
 
@@ -274,13 +277,13 @@ func doRequest(query Query) {
 			lightBlock2, err := retryLightblock(ctx, client, int64(clientHeight.RevisionHeight), 5)
 			if err != nil {
 				fmt.Println("Error: Could not fetch updated LC2 from chain - bailing: ", err) // requeue
-				return
+				panic("Error: Could not fetch updated LC2 from chain - bailing: ")
 			}
 			valSet := tmtypes.NewValidatorSet(lightBlock2.ValidatorSet.Validators)
 			trustedValset, err = valSet.ToProto()
 			if err != nil {
 				fmt.Println("Error: Could not get valset2 from chain: ", err)
-				return
+				panic("Error: Could not get valset2 from chain: ")
 			}
 		}
 
@@ -294,7 +297,7 @@ func doRequest(query Query) {
 		anyHeader, err := clienttypes.PackHeader(header)
 		if err != nil {
 			fmt.Println("Error: Could not get pack header: ", err)
-			return
+			panic("Error: Could not get pack header: ")
 		}
 
 		msg := &clienttypes.MsgUpdateClient{
@@ -307,7 +310,7 @@ func doRequest(query Query) {
 
 	}
 
-	msg := &qstypes.MsgSubmitQueryResponse{ChainId: query.ChainId, QueryId: query.QueryId, Result: res.Value, ProofOps: res.ProofOps, Height: query.Height, FromAddress: submitClient.MustEncodeAccAddr(from)}
+	msg := &qstypes.MsgSubmitQueryResponse{ChainId: query.ChainId, QueryId: query.QueryId, Result: res.Value, ProofOps: res.ProofOps, Height: res.Height, FromAddress: submitClient.MustEncodeAccAddr(from)}
 	sendQueue[query.SourceChainId] <- msg
 }
 
@@ -341,6 +344,7 @@ func flush(chainId string, toSend []sdk.Msg) {
 		}
 		// dedupe on queryId
 		msgs := unique(toSend)
+		fmt.Printf("Sending mesage: ", msgs[0].String())
 		resp, err := client.SendMsgs(context.Background(), msgs)
 		if err != nil {
 			if resp != nil && resp.Code == 19 && resp.Codespace == "sdk" {
@@ -364,6 +368,7 @@ func unique(msgSlice []sdk.Msg) []sdk.Msg {
 	list := []sdk.Msg{}
 	for _, entry := range msgSlice {
 		msg, ok := entry.(*clienttypes.MsgUpdateClient)
+
 		if ok {
 			header, _ := clienttypes.UnpackHeader(msg.Header)
 			key := header.GetHeight().String()
