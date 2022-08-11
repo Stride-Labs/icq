@@ -376,7 +376,6 @@ func unique(msgSlice []sdk.Msg) []sdk.Msg {
 			header, _ := clienttypes.UnpackHeader(msg.Header)
 			fmt.Printf("Unpacked header")
 			key := header.GetHeight().String()
-			fmt.Printf("Got height")
 			if _, value := clientUpdateHeights[key]; !value {
 				clientUpdateHeights[key] = true
 				list = append(list, entry)
