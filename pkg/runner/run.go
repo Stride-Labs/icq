@@ -369,7 +369,6 @@ func unique(msgSlice []sdk.Msg) []sdk.Msg {
 	for _, entry := range msgSlice {
 		fmt.Printf("A")
 		msg, ok := entry.(*clienttypes.MsgUpdateClient)
-		fmt.Printf("B")
 
 		if ok {
 			header, _ := clienttypes.UnpackHeader(msg.Header)
